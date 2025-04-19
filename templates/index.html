@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Daily Focus — {{ today }}</title>
+  <style>
+    .square {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin: 1px;
+      background-color: lightgray;
+    }
+    .square.done {
+      background-color: green;
+    }
+    .task-block {
+      margin-bottom: 24px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Daily Focus — {{ today }}</h1>
+
+  {% for direction in directions %}
+    <div class="task-block">
+      <h2>{{ direction.name }} (priority {{ direction.priority }})</h2>
+
+      <form action="/add_task" method="post">
+        <input type="hidden" name="direction" value="{{ direction.name }}">
+        <input type="text" name="task_text" placeholder="What did you do today?" required>
+        <button type="submit">Add</button>
+      </form>
+
+      <p>Today's tasks:</p>
+      <ul>
+        {% for task in entries.get(direction.name, []) %}
+          <li>
+            {% if task.completed_at %}
+              ✅ <s>{{ task.text }}</s>
+            {% else %}
+              🔲 {{ task.text }}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+
+      <!-- Progress bar (1 square per task today) -->
+      <div>
+        {% set tasks = entries.get(direction.name, []) %}
+        {% for task in tasks %}
+          <div class="square {% if task.completed_at %}done{% endif %}"></div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</body>
+</html>
