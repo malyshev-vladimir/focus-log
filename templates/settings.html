@@ -38,7 +38,7 @@
             <tr data-id="{{ task.created_at }}">
                 <td class="cell-name">{{ task.name }}</td>
                 <td class="cell-priority text-center">{{ task.priority }}</td>
-                <td class="text-center">{{ task.created_at }}</td>
+                <td class="text-center">{{ task.created_at | datetimeformat }}</td>
                 <td class="text-center">
                     <form action="/toggle_task" method="post">
                         <input type="hidden" name="created_at" value="{{ task.created_at }}">
@@ -64,4 +64,79 @@
         {% endfor %}
         </tbody>
     </table>
+
+    <script>
+        function enterEditMode(id) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            const nameCell = row.querySelector('.cell-name');
+            const priorityCell = row.querySelector('.cell-priority');
+            const actionsCell = row.querySelector('.cell-actions');
+
+            const originalName = nameCell.textContent.trim();
+            const originalPriority = priorityCell.textContent.trim();
+
+            nameCell.innerHTML = `<input type="text" class="form-control form-control-sm" value="${originalName}">`;
+
+            let selectHTML = `<select class="form-select form-select-sm">`;
+            for (let i = 1; i <= 10; i++) {
+                selectHTML += `<option value="${i}" ${i == originalPriority ? 'selected' : ''}>${i}</option>`;
+            }
+            selectHTML += `</select>`;
+            priorityCell.innerHTML = selectHTML;
+
+            actionsCell.innerHTML = `
+      <button class="btn btn-sm btn-success me-1" title="Save" onclick="saveEdit('${id}')">
+        <i class="bi bi-check-lg"></i>
+      </button>
+      <button class="btn btn-sm btn-secondary" title="Cancel" onclick="cancelEdit('${id}', '${originalName}', '${originalPriority}')">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    `;
+        }
+
+        function cancelEdit(id, name, priority) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            row.querySelector('.cell-name').textContent = name;
+            row.querySelector('.cell-priority').textContent = priority;
+            row.querySelector('.cell-actions').innerHTML = `
+      <button class="btn btn-sm btn-warning me-1" onclick="enterEditMode('${id}')" title="Edit">
+        <i class="bi bi-pencil"></i>
+      </button>
+      <form action="/delete_task" method="post" class="d-inline">
+        <input type="hidden" name="created_at" value="${id}">
+        <button type="submit" class="btn btn-sm btn-danger" title="Delete">
+          <i class="bi bi-trash"></i>
+        </button>
+      </form>
+    `;
+        }
+
+        function saveEdit(id) {
+            const row = document.querySelector(`tr[data-id="${id}"]`);
+            const newName = row.querySelector('.cell-name input').value.trim();
+            const newPriority = row.querySelector('.cell-priority select').value;
+
+            fetch('/edit_task', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    created_at: id,
+                    name: newName,
+                    priority: newPriority
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        row.querySelector('.cell-name').textContent = newName;
+                        row.querySelector('.cell-priority').textContent = newPriority;
+                        cancelEdit(id, newName, newPriority);
+                    } else {
+                        alert('Ошибка при сохранении.');
+                    }
+                });
+        }
+    </script>
 {% endblock %}

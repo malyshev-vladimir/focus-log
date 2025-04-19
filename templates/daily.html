@@ -13,7 +13,7 @@
                     id="general_notes"
                     name="general_notes"
                     class="form-control"
-                    rows="5"
+                    rows="6"
             >{{ general_notes | trim }}</textarea>
         </div>
 
@@ -24,7 +24,7 @@
                 <textarea
                         name="entry_{{ task.created_at }}"
                         class="form-control"
-                        rows="2"
+                        rows="3"
                 >{{ task_entries.get(task.created_at, '') | trim }}</textarea>
             </div>
         {% endfor %}

@@ -7,6 +7,15 @@ app = Flask(__name__)
 TASKS_FILE = 'tasks.json'
 
 
+@app.template_filter('datetimeformat')
+def format_datetime(value):
+    try:
+        dt = datetime.fromisoformat(value)
+        return dt.strftime('%d.%m.%Y')
+    except Exception:
+        return value
+
+
 def load_data():
     if not os.path.exists(TASKS_FILE):
         with open(TASKS_FILE, 'w', encoding='utf-8') as f:
@@ -29,7 +38,11 @@ def daily_log():
     today_str = today.isoformat()
     current_date = today.strftime('%d.%m.%Y')
 
-    tasks = [t for t in data.get("tasks", []) if not t.get("completed", False)]
+    tasks = sorted(
+        [t for t in data.get("tasks", []) if not t.get("completed", False)],
+        key=lambda t: t.get("priority", 10)
+    )
+
     logs_by_date = data.get("logs_by_date", {})
     today_log = logs_by_date.get(today_str, {})
 
@@ -102,6 +115,7 @@ def settings():
         save_data(data)
         return redirect(url_for('settings'))
 
+    tasks = sorted(tasks, key=lambda t: t.get("priority", 10))
     return render_template('settings.html', tasks=tasks)
 
 
