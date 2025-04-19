@@ -1,35 +1,82 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 app = Flask(__name__)
 TASKS_FILE = 'tasks.json'
 
 
-def load_tasks():
+def load_data():
     if not os.path.exists(TASKS_FILE):
         with open(TASKS_FILE, 'w', encoding='utf-8') as f:
-            json.dump([], f)
+            json.dump({"tasks": [], "logs_by_date": {}}, f)
     with open(TASKS_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 
-def save_tasks(tasks):
+def save_data(data):
     temp_file = TASKS_FILE + '.tmp'
     with open(temp_file, 'w', encoding='utf-8') as f:
-        json.dump(tasks, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(temp_file, TASKS_FILE)
 
 
-@app.route('/')
-def home():
-    return redirect(url_for('settings'))
+@app.route('/', methods=['GET'])
+def daily_log():
+    data = load_data()
+    today = date.today()
+    today_str = today.isoformat()
+    current_date = today.strftime('%d.%m.%Y')
+
+    tasks = [t for t in data.get("tasks", []) if not t.get("completed", False)]
+    logs_by_date = data.get("logs_by_date", {})
+    today_log = logs_by_date.get(today_str, {})
+
+    general_notes = today_log.get("general_notes", "")
+    task_entries = today_log.get("entries", {})
+
+    return render_template(
+        "daily.html",
+        tasks=tasks,
+        general_notes=general_notes,
+        task_entries=task_entries,
+        current_date=current_date
+    )
+
+
+@app.route('/save_log', methods=['POST'])
+def save_log():
+    data = load_data()
+    form_data = request.form.to_dict()
+    today = date.today().isoformat()
+
+    tasks = data.get("tasks", [])
+    logs_by_date = data.get("logs_by_date", {})
+
+    daily_entry = {
+        "general_notes": form_data.get("general_notes", "").strip(),
+        "entries": {}
+    }
+
+    for task in tasks:
+        field_name = f"entry_{task['created_at']}"
+        if field_name in form_data:
+            text = form_data[field_name].strip()
+            if text:
+                daily_entry["entries"][task["created_at"]] = text
+
+    logs_by_date[today] = daily_entry
+    data["logs_by_date"] = logs_by_date
+    save_data(data)
+
+    return redirect(url_for('daily_log'))
 
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    tasks = load_tasks()
+    data = load_data()
+    tasks = data.get("tasks", [])
 
     if request.method == 'POST':
         new_task = request.form.get('task')
@@ -39,7 +86,6 @@ def settings():
             return redirect(url_for('settings'))
 
         new_task = new_task.strip()
-
         try:
             priority = int(priority_str)
         except (ValueError, TypeError):
@@ -52,7 +98,8 @@ def settings():
             "completed": False
         })
 
-        save_tasks(tasks)
+        data["tasks"] = tasks
+        save_data(data)
         return redirect(url_for('settings'))
 
     return render_template('settings.html', tasks=tasks)
@@ -61,38 +108,46 @@ def settings():
 @app.route('/delete_task', methods=['POST'])
 def delete_task():
     created_at = request.form.get('created_at')
-    tasks = load_tasks()
+    data = load_data()
+    tasks = data.get("tasks", [])
     tasks = [t for t in tasks if t['created_at'] != created_at]
-    save_tasks(tasks)
+    data["tasks"] = tasks
+    save_data(data)
     return redirect(url_for('settings'))
 
 
 @app.route('/edit_task', methods=['POST'])
 def edit_task():
-    data = request.get_json()
-    tasks = load_tasks()
-    created_at = data.get('created_at')
+    edit_data = request.get_json()
+    data = load_data()
+    tasks = data.get("tasks", [])
+    created_at = edit_data.get('created_at')
+
     for task in tasks:
         if task['created_at'] == created_at:
-            task['name'] = data.get('name', task['name']).strip()
+            task['name'] = edit_data.get('name', task['name']).strip()
             try:
-                task['priority'] = int(data.get('priority', task['priority']))
+                task['priority'] = int(edit_data.get('priority', task['priority']))
             except (ValueError, TypeError):
                 pass
-            save_tasks(tasks)
+            data["tasks"] = tasks
+            save_data(data)
             return jsonify({'status': 'ok'})
+
     return jsonify({'status': 'error'})
 
 
 @app.route('/toggle_task', methods=['POST'])
 def toggle_task():
     created_at = request.form.get('created_at')
-    tasks = load_tasks()
+    data = load_data()
+    tasks = data.get("tasks", [])
     for task in tasks:
         if task['created_at'] == created_at:
             task['completed'] = not task.get('completed', False)
             break
-    save_tasks(tasks)
+    data["tasks"] = tasks
+    save_data(data)
     return redirect(url_for('settings'))
 
 

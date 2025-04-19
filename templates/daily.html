@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Ежедневник — {{ current_date }}{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4">Ежедневник — {{ current_date }}</h1>
+
+    <form method="post" action="/save_log">
+        <!-- Общее поле -->
+        <div class="mb-5">
+            <label for="general_notes" class="form-label fs-5">Общие заметки</label>
+            <textarea
+                    id="general_notes"
+                    name="general_notes"
+                    class="form-control"
+                    rows="5"
+            >{{ general_notes | trim }}</textarea>
+        </div>
+
+        <!-- Задачи -->
+        {% for task in tasks %}
+            <div class="mb-4">
+                <label class="form-label">{{ task.name }}</label>
+                <textarea
+                        name="entry_{{ task.created_at }}"
+                        class="form-control"
+                        rows="2"
+                >{{ task_entries.get(task.created_at, '') | trim }}</textarea>
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Сохранить
+        </button>
+    </form>
+{% endblock %}
