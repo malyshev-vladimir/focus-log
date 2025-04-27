@@ -3,34 +3,56 @@
 {% block title %}Ежедневник — {{ current_date }}{% endblock %}
 
 {% block content %}
-    <h1 class="mb-4">Ежедневник — {{ current_date }}</h1>
+<h1 class="mb-4">Ежедневник — {{ current_date }}</h1>
 
-    <form method="post" action="/save_log">
-        <!-- Общее поле -->
-        <div class="mb-5">
-            <label for="general_notes" class="form-label fs-5">Общие заметки</label>
-            <textarea
-                    id="general_notes"
-                    name="general_notes"
-                    class="form-control"
-                    rows="6"
-            >{{ general_notes | trim }}</textarea>
-        </div>
+<form method="post" action="/save_log">
+    <div class="mb-5">
+        <label for="general_notes" class="form-label fs-5">Общие заметки</label>
+        <textarea id="general_notes" name="general_notes" class="form-control" rows="6">{{ general_notes | trim }}</textarea>
+    </div>
 
-        <!-- Задачи -->
-        {% for task in tasks %}
-            <div class="mb-4">
-                <label class="form-label">{{ task.name }}</label>
-                <textarea
-                        name="entry_{{ task.created_at }}"
-                        class="form-control"
-                        rows="3"
-                >{{ task_entries.get(task.created_at, '') | trim }}</textarea>
+    {% for task in tasks %}
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label mb-0">{{ task.name }}</label>
+                <div class="task-contribution" id="task-{{ task.created_at }}"></div>
             </div>
-        {% endfor %}
+            <textarea
+                name="entry_{{ task.created_at }}"
+                class="form-control"
+                rows="3"
+            >{{ task_entries.get(task.created_at, '') | trim }}</textarea>
+        </div>
+    {% endfor %}
 
-        <button type="submit" class="btn btn-primary">
-            <i class="bi bi-save"></i> Сохранить
-        </button>
-    </form>
+    <button type="submit" class="btn btn-primary">
+        <i class="bi bi-save"></i> Сохранить
+    </button>
+</form>
+
+<script>
+    {% set logs_by_date = logs_by_date or {} %}
+    {% for task in tasks %}
+        {% set activity_dates = [] %}
+        {% for date_key, log in logs_by_date.items() %}
+            {% if log.entries and task.created_at in log.entries %}
+                {% set _ = activity_dates.append(date_key) %}
+            {% endif %}
+        {% endfor %}
+        renderTaskContribution("{{ task.created_at }}", {{ activity_dates|tojson }});
+    {% endfor %}
+</script>
+<script>
+    window.addEventListener('resize', () => {
+        {% for task in tasks %}
+            {% set activity_dates = [] %}
+            {% for date_key, log in logs_by_date.items() %}
+                {% if log.entries and task.created_at in log.entries %}
+                    {% set _ = activity_dates.append(date_key) %}
+                {% endif %}
+            {% endfor %}
+            renderTaskContribution("{{ task.created_at }}", {{ activity_dates|tojson }});
+        {% endfor %}
+    });
+</script>
 {% endblock %}

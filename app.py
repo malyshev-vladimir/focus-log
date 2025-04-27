@@ -54,7 +54,8 @@ def daily_log():
         tasks=tasks,
         general_notes=general_notes,
         task_entries=task_entries,
-        current_date=current_date
+        current_date=current_date,
+        logs_by_date=logs_by_date
     )
 
 
